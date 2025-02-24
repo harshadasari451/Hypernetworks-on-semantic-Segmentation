@@ -13,7 +13,6 @@ def extract_random_patches(img_tensor, patch_size, num_patches = 3):
 
 
     Returns:
-    - patches (Tensor): The extracted patches of shape (3, C, patch_size, patch_size)
     - pixel_indices (Tensor): The indices of the selected pixels (3, 2)
     - masked_img (Tensor): The masked image tensor with only the patches visible
     """
@@ -35,11 +34,11 @@ def extract_random_patches(img_tensor, patch_size, num_patches = 3):
 
     patches = torch.stack(patches)  # Shape: (num_patchs, C, patch_size, patch_size)
 
-    return patches, yx_coords, masked_img
+    return yx_coords, masked_img
 
-# # Example Usage:
-# img = torch.rand(1, 128, 128)  # Example image tensor (3 channels, 128x128)
-# patches, pixel_indices, masked_img = extract_random_patches(img, patch_size=9)
+# Example Usage:
+# img = torch.rand(3, 128, 128)  # Example image tensor (3 channels, 128x128)
+# pixel_indices, masked_img = extract_random_patches(img, patch_size=9)
 
 # print("Extracted Patches Shape:", patches.shape)  # Should be (3, C, 9, 9)
 # print("Selected Pixel Indices:", pixel_indices)
