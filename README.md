@@ -6,3 +6,9 @@ Feb 17
 
 Feb 20
 - get_boundary_pixels
+
+Feb 21
+- Hypernet code uploaded
+
+Feb 22
+- resnet code and primary net code is uploaded
