@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 
-from hyper_net import HyperNetwork
+from HyperNetwork import HyperNetwork
 from Resnet import ResNetBlock
 
 
@@ -22,13 +22,13 @@ class Embedding(nn.Module):
             for j in range(k):
                 self.z_list.append(Parameter(torch.fmod(torch.randn(self.z_dim).cuda(), 2)))
 
-    def forward(self, hyper_net, y_mask_img):
+    def forward(self, hyper_net, y_mask_img, key_pixel):
         ww = []
         h, k = self.z_num
         for i in range(h):
             w = []
             for j in range(k):
-                w.append(hyper_net(self.z_list[i*k + j],y_mask_img))
+                w.append(hyper_net(self.z_list[i*k + j],y_mask_img, key_pixel))
             ww.append(torch.cat(w, dim=1))
         return torch.cat(ww, dim=0)
 
@@ -70,15 +70,15 @@ class PrimaryNetwork(nn.Module):
         self.global_avg = nn.AvgPool2d(8)
         self.final = nn.Linear(64,10)
 
-    def forward(self, x , y_mask_img):
+    def forward(self, x , y_mask_img, key_pixel):
 
         x = F.relu(self.bn1(self.conv1(x)))
         y_mask = self.y_bn(self.y_conv(y_mask_img))
         print(f"y_mask: {y_mask.shape}")
         for i in range(18):
             # if i != 15 and i != 17:
-            w1 = self.zs[2*i](self.hope, y_mask)
-            w2 = self.zs[2*i+1](self.hope, y_mask)
+            w1 = self.zs[2*i](self.hope, y_mask, key_pixel)
+            w2 = self.zs[2*i+1](self.hope, y_mask, key_pixel)
             x = self.res_net[i](x, w1, w2)
 
         x = self.global_avg(x)
