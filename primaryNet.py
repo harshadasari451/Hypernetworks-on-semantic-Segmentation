@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 
-from HyperNetwork import HyperNetwork
+from HyperNet import HyperNetwork
 from Resnet import ResNetBlock
 
 
