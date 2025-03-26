@@ -1,46 +1,49 @@
-import numpy as np
+import torch
 
-def extract_patch(image, x, y, patch_size=(10, 10)):
+def extract_patch(image, x, y, patch_size=(9, 9)):
     """
-    Extract a patch of size patch_size around the pixel (x, y) from the image.
+    Extract a patch centered at (x, y) from an image tensor.
     If the patch goes out of bounds, pad with zeros.
-
+    
     Args:
-        image (numpy.ndarray): Input image (2D or 3D array).
+        image (torch.Tensor): Input image tensor with shape (C, H, W).
         x (int): X-coordinate of the center pixel.
         y (int): Y-coordinate of the center pixel.
         patch_size (tuple): Size of the patch (height, width).
-
+    
     Returns:
-        numpy.ndarray: Extracted patch.
+        torch.Tensor: Extracted patch with shape (C, patch_height, patch_width).
+
     """
-    height, width = image.shape[:2]
+    if image.ndim != 3:
+        image = image.unsqueeze(0)  # Add batch dimension
+
+    C, H, W = image.shape  # Ensure correct channel, height, width ordering
     patch_height, patch_width = patch_size
 
-    # Calculate the start and end indices for the patch
-    x_start = x - patch_width // 2
-    x_end = x_start + patch_width
-    y_start = y - patch_height // 2
-    y_end = y_start + patch_height
+    # Calculate the region of the image to extract
+    x_start = x - patch_height // 2
+    x_end = x_start + patch_height
+    y_start = y - patch_width // 2
+    y_end = y_start + patch_width
 
-    patch = np.zeros((patch_height, patch_width) if image.ndim == 2 else (patch_height, patch_width, int(image.shape[2])))
+    # Initialize the patch with zeros
+    patch = torch.zeros((C, patch_height, patch_width), dtype=image.dtype)
 
-    x_start_img = max(x_start, 0)
-    x_end_img = min(x_end, width)
-    y_start_img = max(y_start, 0)
-    y_end_img = min(y_end, height)
+    # Compute valid range within image
+    valid_x_start = max(x_start, 0)
+    valid_x_end = min(x_end, H)
+    valid_y_start = max(y_start, 0)
+    valid_y_end = min(y_end, W)
 
-    x_start_patch = x_start_img - x_start
-    x_end_patch = x_start_patch + (x_end_img - x_start_img)
-    y_start_patch = y_start_img - y_start
-    y_end_patch = y_start_patch + (y_end_img - y_start_img)
+    # Compute where to place the extracted image pixels in the patch
+    patch_x_start = max(0, -x_start)  # Offset if out of bounds on the left
+    patch_x_end = patch_x_start + (valid_x_end - valid_x_start)
+    patch_y_start = max(0, -y_start)  # Offset if out of bounds on the top
+    patch_y_end = patch_y_start + (valid_y_end - valid_y_start)
 
-    patch[y_start_patch:y_end_patch, x_start_patch:x_end_patch] = image[y_start_img:y_end_img, x_start_img:x_end_img]
+    # Copy the valid region from the image into the patch
+    patch[:, patch_x_start:patch_x_end, patch_y_start:patch_y_end] = \
+        image[:, valid_x_start:valid_x_end, valid_y_start:valid_y_end]
 
     return patch
-
-# # Example usage:
-# image = np.random.rand(100, 100,3)  
-# x, y = 3, 2 
-# patch = extract_patch(image, x, y, patch_size=(10, 10))
-# print(patch.shape)  # Output: (10, 10,3)
