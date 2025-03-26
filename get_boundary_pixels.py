@@ -1,48 +1,23 @@
-def get_boundary_pixels(x, y, image_size, patch_size):
-    """
-    Get the boundary pixels around a patch centered at (x, y).
+def get_boundary_pixels(x, y,patch_size=(9,9)):
+    x_half_patch = patch_size[0] // 2
+    y_half_patch = patch_size[1] // 2
 
-    Args:
-        x (int): The x-coordinate of the center pixel.
-        y (int): The y-coordinate of the center pixel.
-        image_size (tuple): The size of the image as (width, height).
-        patch_size (int): The size of the patch
+    # Allow negative values and values beyond image dimensions
+    x_min = x - x_half_patch - 1
+    x_max = x + x_half_patch + 1
+    y_min = y - y_half_patch - 1
+    y_max = y + y_half_patch + 1
 
-    Returns:
-        list: A list of (x, y) tuples representing the boundary pixels.
-    """
-    width, height = image_size
     boundary_pixels = []
 
-    # Define the patch size 
-    patch_size = patch_size
-    half_patch = patch_size // 2
+    # Top and bottom boundaries (including corners)
+    for i in range(x_min, x_max + 1):
+        boundary_pixels.append((i, y_min))  # Top boundary
+        boundary_pixels.append((i, y_max))  # Bottom boundary
 
-    # Define the boundary limits (1 pixel outside the patch)
-    min_x = x - half_patch - 1
-    max_x = x + half_patch + 1
-    min_y = y - half_patch - 1
-    max_y = y + half_patch + 1
-
-    # Iterate over the boundary pixels
-    for i in range(min_x, max_x + 1):
-        for j in range(min_y, max_y + 1):
-            # Skip pixels inside the patch
-            if (i >= x - half_patch and i <= x + half_patch) and (j >= y - half_patch and j <= y + half_patch):
-                continue
-            # Include only valid pixels within the image boundaries
-            if 0 <= i < width and 0 <= j < height:
-                boundary_pixels.append((i, j))
+    # Left and right boundaries (excluding corners to avoid duplicates)
+    for j in range(y_min + 1, y_max):
+        boundary_pixels.append((x_min, j))  # Left boundary
+        boundary_pixels.append((x_max, j))  # Right boundary
 
     return boundary_pixels
-
-
-# # Example image size
-# image_size = (256, 256)
-
-# # Example pixel location
-# x, y = 3, 2
-# patch_size = 5
-# # Get boundary pixels
-# boundary_pixels = get_boundary_pixels(x, y, image_size, patch_size)
-# print(boundary_pixels)
