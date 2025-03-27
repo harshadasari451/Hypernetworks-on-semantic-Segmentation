@@ -40,9 +40,9 @@ class PrimaryNetwork(nn.Module):
         self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
         self.bn1 = nn.BatchNorm2d(16)
 
-        # Adding a conv2d for y_mask_img
-        self.y_conv = nn.Conv2d(20,16,3,padding = 1) 
-        self.y_bn = nn.BatchNorm2d(16)
+        # # Adding a conv2d for y_mask_img
+        # self.y_conv = nn.Conv2d(1,16,3,padding = 1) 
+        # self.y_bn = nn.BatchNorm2d(16)
 
         self.z_dim = z_dim
         self.hope = HyperNetwork(z_dim=self.z_dim)
@@ -67,21 +67,29 @@ class PrimaryNetwork(nn.Module):
         for i in range(36):
             self.zs.append(Embedding(self.zs_size[i], self.z_dim))
 
-        self.global_avg = nn.AvgPool2d(8)
-        self.final = nn.Linear(64,10)
+        self.global_avg = nn.AvgPool2d(9)
+        self.final = nn.Linear(64,20) # i need to check for number of class in cityscapes file 
 
     def forward(self, x , y_mask_img, key_pixel):
-
+        
+        x = x
         x = F.relu(self.bn1(self.conv1(x)))
-        y_mask = self.y_bn(self.y_conv(y_mask_img))
-        print(f"y_mask: {y_mask.shape}")
+        # y_mask_img = y_mask_img.unsqueeze(0)  
+        # y_mask = self.y_bn(self.y_conv(y_mask_img.float()))
+        # print(y_mask.shape)
         for i in range(18):
             # if i != 15 and i != 17:
-            w1 = self.zs[2*i](self.hope, y_mask, key_pixel)
-            w2 = self.zs[2*i+1](self.hope, y_mask, key_pixel)
+            # print(i)
+            w1 = self.zs[2*i](self.hope, y_mask_img, key_pixel)
+            # print(f"w1 shape: {w1.shape}")
+            w2 = self.zs[2*i+1](self.hope, y_mask_img, key_pixel)
+            # print(f"w2 shape: {w2.shape}")
             x = self.res_net[i](x, w1, w2)
+            # print(f"x shape: {x.shape}")
 
         x = self.global_avg(x)
-        x = self.final(x.view(-1,64))
+        x= x.squeeze(-1).squeeze(-1)
+        x = self.final(x)
+        # print(x.shape)
 
         return x
