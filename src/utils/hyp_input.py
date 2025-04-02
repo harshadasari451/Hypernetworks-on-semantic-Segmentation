@@ -1,7 +1,7 @@
 import torch
 
-from Hypernetworks_stevens import extract_patch
-from Hypernetworks_stevens import get_positional_embedding
+from src.utils.extract_patch import extract_patch
+from src.utils.get_position_embedding import get_positional_embedding
 
 def hyp_input(img_tensor, patch_size=(9,9), num_patches=3):
     """
