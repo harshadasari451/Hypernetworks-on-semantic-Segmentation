@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 
-from HyperNet import HyperNetwork
-from Resnet import ResNetBlock
+from src.models.HyperNet import HyperNetwork
+from src.models.Resnet import ResNetBlock
 
 
 class Embedding(nn.Module):
