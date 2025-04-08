@@ -29,7 +29,7 @@ class HyperNetwork(nn.Module):
         y_mask_img = y_mask_img
         key_pixel = key_pixel
 
-        h_in = torch.matmul(z, self.w2) + self.b2
+        h_z = torch.matmul(z, self.w2) + self.b2
         
         y_mask_img = torch.squeeze(y_mask_img, dim=0).float().flatten()
         y_prime = torch.matmul(y_mask_img, self.w_img) + self.b_img
@@ -38,7 +38,7 @@ class HyperNetwork(nn.Module):
         y_Pixel_w = torch.matmul(self.w_pixel, y_pixel).squeeze()
         
         h_img_trans = torch.cat([y_prime, y_Pixel_w])
-        h_prime = torch.cat([h_in, h_img_trans])
+        h_prime = torch.cat([h_z, h_img_trans])
         h_final = torch.matmul(h_prime.unsqueeze(0), self.w1) + self.b1
         kernel = h_final.view(self.out_size, self.in_size, self.f_size, self.f_size)
 
