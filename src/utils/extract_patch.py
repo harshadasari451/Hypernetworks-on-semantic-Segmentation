@@ -1,5 +1,6 @@
 import torch
 
+
 def extract_patch(image, x, y, patch_size=(9, 9)):
     """
     Extract a patch centered at (x, y) from an image tensor.
@@ -28,7 +29,7 @@ def extract_patch(image, x, y, patch_size=(9, 9)):
     y_end = y_start + patch_width
 
     # Initialize the patch with zeros
-    patch = torch.zeros((C, patch_height, patch_width), dtype=image.dtype)
+    patch = torch.zeros((C, patch_height, patch_width), dtype=torch.float32)
 
     # Compute valid range within image
     valid_x_start = max(x_start, 0)
