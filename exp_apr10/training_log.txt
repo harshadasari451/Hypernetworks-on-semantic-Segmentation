@@ -1,0 +1,21 @@
+Epoch [1/100], Loss: 0.4562, Accuracy: 0.8282, F1 Micro: 0.8282, F1 Macro: 0.5970, Precision: 0.7236, Recall: 0.5515, IoU: 0.4671
+Number of patches with no valid pixels: 0
+
+Epoch [2/100], Loss: 0.3886, Accuracy: 0.8456, F1 Micro: 0.8456, F1 Macro: 0.6634, Precision: 0.7242, Recall: 0.6262, IoU: 0.5270
+Number of patches with no valid pixels: 0
+
+Epoch [3/100], Loss: 0.3683, Accuracy: 0.8492, F1 Micro: 0.8492, F1 Macro: 0.6919, Precision: 0.7489, Recall: 0.6546, IoU: 0.5530
+Number of patches with no valid pixels: 0
+
+Epoch [4/100], Loss: 0.3647, Accuracy: 0.8539, F1 Micro: 0.8539, F1 Macro: 0.6946, Precision: 0.7454, Recall: 0.6595, IoU: 0.5565
+Number of patches with no valid pixels: 0
+
+Epoch [5/100], Loss: 0.3593, Accuracy: 0.8543, F1 Micro: 0.8543, F1 Macro: 0.7165, Precision: 0.7576, Recall: 0.6862, IoU: 0.5784
+Number of patches with no valid pixels: 0
+
+Epoch [6/100], Loss: 0.3455, Accuracy: 0.8601, F1 Micro: 0.8601, F1 Macro: 0.7158, Precision: 0.7557, Recall: 0.6856, IoU: 0.5786
+Number of patches with no valid pixels: 0
+
+Epoch [7/100], Loss: 0.3430, Accuracy: 0.8584, F1 Micro: 0.8584, F1 Macro: 0.7215, Precision: 0.7586, Recall: 0.6931, IoU: 0.5843
+Number of patches with no valid pixels: 0
+

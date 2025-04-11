@@ -1,7 +1,7 @@
 import torch
 
 
-def extract_patch(image, x, y, patch_size=(9, 9)):
+def extract_patch(image, x, y, p_height = 9, p_width = 9):
     """
     Extract a patch centered at (x, y) from an image tensor.
     If the patch goes out of bounds, pad with zeros.
@@ -20,7 +20,7 @@ def extract_patch(image, x, y, patch_size=(9, 9)):
         image = image.unsqueeze(0)  # Add batch dimension
 
     C, H, W = image.shape  # Ensure correct channel, height, width ordering
-    patch_height, patch_width = patch_size
+    patch_height, patch_width = p_height, p_width
 
     # Calculate the region of the image to extract
     x_start = x - patch_height // 2

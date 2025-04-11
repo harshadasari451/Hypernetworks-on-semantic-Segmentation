@@ -22,13 +22,13 @@ class Embedding(nn.Module):
             for j in range(k):
                 self.z_list.append(Parameter(torch.fmod(torch.randn(self.z_dim).cuda(), 2)))
 
-    def forward(self, hyper_net, y_mask_img, key_pixel):
+    def forward(self, hyper_net, expert_patch, global_patch):
         ww = []
         h, k = self.z_num
         for i in range(h):
             w = []
             for j in range(k):
-                w.append(hyper_net(self.z_list[i*k + j],y_mask_img, key_pixel))
+                w.append(hyper_net(self.z_list[i*k + j],expert_patch, global_patch))
             ww.append(torch.cat(w, dim=1))
         return torch.cat(ww, dim=0)
 
@@ -37,12 +37,8 @@ class PrimaryNetwork(nn.Module):
 
     def __init__(self, z_dim=64):
         super(PrimaryNetwork, self).__init__()
-        self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
+        self.conv1 = nn.Conv2d(1, 16, 3, padding=1)
         self.bn1 = nn.BatchNorm2d(16)
-
-        # # Adding a conv2d for y_mask_img
-        # self.y_conv = nn.Conv2d(1,16,3,padding = 1) 
-        # self.y_bn = nn.BatchNorm2d(16)
 
         self.z_dim = z_dim
         self.hope = HyperNetwork(z_dim=self.z_dim)
@@ -68,28 +64,19 @@ class PrimaryNetwork(nn.Module):
             self.zs.append(Embedding(self.zs_size[i], self.z_dim))
 
         self.global_avg = nn.AvgPool2d(9)
-        self.final = nn.Linear(64,20) # i need to check for number of class in cityscapes file 
+        self.final = nn.Linear(64,3) # change for number of classes
 
-    def forward(self, x , y_mask_img, key_pixel):
-        
-        x = x
+    def forward(self, x,expert_patch,global_patch):
+
         x = F.relu(self.bn1(self.conv1(x)))
-        # y_mask_img = y_mask_img.unsqueeze(0)  
-        # y_mask = self.y_bn(self.y_conv(y_mask_img.float()))
-        # print(y_mask.shape)
         for i in range(18):
-            # if i != 15 and i != 17:
-            # print(i)
-            w1 = self.zs[2*i](self.hope, y_mask_img, key_pixel)
-            # print(f"w1 shape: {w1.shape}")
-            w2 = self.zs[2*i+1](self.hope, y_mask_img, key_pixel)
-            # print(f"w2 shape: {w2.shape}")
+            w1 = self.zs[2*i](self.hope, expert_patch, global_patch)
+            w2 = self.zs[2*i+1](self.hope, expert_patch, global_patch)            
             x = self.res_net[i](x, w1, w2)
-            # print(f"x shape: {x.shape}")
+            
 
         x = self.global_avg(x)
         x= x.squeeze(-1).squeeze(-1)
         x = self.final(x)
-        # print(x.shape)
 
         return x

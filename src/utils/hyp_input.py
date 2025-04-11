@@ -3,7 +3,7 @@ import torch
 from src.utils.extract_patch import extract_patch
 from src.utils.get_position_embedding import get_positional_embedding
 
-def hyp_input(img_tensor, patch_size=(9,9), num_patches=3):
+def hyp_input(expert_img_tensor, small_img_tensor, patch_size=(9,9), num_patches=3):
     """
     Extracts random patches from img_tensor and computes positional embeddings for the patches.
 
@@ -16,26 +16,36 @@ def hyp_input(img_tensor, patch_size=(9,9), num_patches=3):
         torch.Tensor: The indices of the selected pixels (num_patches, 2)
         torch.Tensor: The tensor containing flattened patches concatenated with positional embeddings
     """
-    if img_tensor.ndim != 3:
-        img_tensor = img_tensor.unsqueeze(0)
+    if expert_img_tensor.ndim != 3:
+        expert_img_tensor = expert_img_tensor.unsqueeze(0)
+    if small_img_tensor.ndim != 3:
+        small_img_tensor = small_img_tensor.unsqueeze(0)
 
-    _ ,H, W = img_tensor.shape  # Assuming shape ( H, W)
+    _ ,H, W = expert_img_tensor.shape  # Assuming shape ( H, W)
 
     # Randomly select pixel locations (y, x) ensuring patches fit within bounds
     x_coords = torch.randint(0, H , (num_patches,))
     y_coords = torch.randint(0, W , (num_patches,))
     xy_coords = torch.stack([x_coords, y_coords], dim=1)  # Shape: (num_patches, 2)
 
-    patches = []
+    expert_patches = []
+    small_patches = []
 
     for x,y in xy_coords:
-        patch = extract_patch(img_tensor, x.item(), y.item(), (patch_size))
+        expert_patch = extract_patch(expert_img_tensor, x.item(), y.item(), 9,9)
+        small_patch = extract_patch(small_img_tensor, x.item(), y.item(), 11,11)
 
-        position_embedding = get_positional_embedding(x.item(), y.item())
 
-        patch_tensor = torch.cat([patch.flatten(), position_embedding])
-        patches.append(patch_tensor)
+        expert_position_embedding = get_positional_embedding(x.item(), y.item())
+        small_position_embedding = get_positional_embedding(x.item(), y.item(), periods = [11,5])
 
-    final_tensor = torch.stack(patches)  # Shape: (num_patches, flattened_patch + positional_embedding)
+        expert_patch_tensor = torch.cat([expert_patch.flatten(), expert_position_embedding])
+        small_patch_tensor = torch.cat([small_patch.flatten(), small_position_embedding])
 
-    return xy_coords, final_tensor
+        expert_patches.append(expert_patch_tensor)
+        small_patches.append(small_patch_tensor)
+
+    expert_final_tensor = torch.stack(expert_patches)  # Shape: (num_patches, flattened_patch + positional_embedding)
+    small_final_tensor = torch.stack(small_patches)
+
+    return xy_coords, expert_final_tensor, small_final_tensor

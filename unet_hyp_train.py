@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from src.models.Unet_model import UNet
+from src.models.Unet_model import UNet, UNetTinyTwoBlock
 from src.data_loaders.Battery_unet_hyp_dataloader import Battery_unet_hyp_data
 from src.models.primaryNet import PrimaryNetwork
 import os
@@ -12,26 +12,39 @@ from torchmetrics.functional import jaccard_index
 
 
 
+
+device_1 = torch.device("cpu")
+print(f"Using device for unet and unet_tiny models : {device_1}")
 device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-
 unet_path = "/home/CAMPUS/sgangadh1/projects/rl-batt-seg-snapshot-jan-2024/src/outputs/rerun-battery-01/unet_model_checkpoint_finetuned.pt"
+global_model_path = "/home/CAMPUS/hdasari/HyperNetworks/model_checkpoints_AAI_paper/unet_tiny_two_block_model_checkpoint_199_final.pt"
 
-model_unet = UNet(n_channels=1, n_classes=3)
-model_unet = model_unet.to(device)
+expert_model_unet = UNet(n_channels=1, n_classes=3)
+expert_model_unet = expert_model_unet.to(device_1)
 
-checkpoint = torch.load(unet_path)
+global_model = UNetTinyTwoBlock(n_channels=1, n_classes=3)
+global_model = global_model.to(device_1)
 
-model_unet.load_state_dict(checkpoint['model_state_dict'])
-model_unet.eval()
+
+expert_checkpoint = torch.load(unet_path)
+global_checkpoint = torch.load(global_model_path)
+
+expert_model_unet.load_state_dict(expert_checkpoint['model_state_dict'])
+expert_model_unet.eval()
+
+global_model.load_state_dict(global_checkpoint['model_state_dict'])
+global_model.eval()
 
 
 image_dir = "/home/CAMPUS/sgangadh1/projects/rl-batt-seg-snapshot-jan-2024/data/battery_2/train_images"
+label_dir = "/home/CAMPUS/sgangadh1/projects/rl-batt-seg-snapshot-jan-2024/data/battery_2/train_label"
+
 
 # Load dataset
-train_dataset = Battery_unet_hyp_data(image_dir, model_unet,device)
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=4)
+train_dataset = Battery_unet_hyp_data(image_dir, label_dir, expert_model_unet, global_model,device_1)
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=4)
 
 
 model = PrimaryNetwork()
@@ -66,7 +79,7 @@ loss_per_epoch = []
 losses = []
 
 # Training loop
-for epoch in range(1):
+for epoch in range(start_epoch, end_epoch):
     model.train()
     loss_epoch = 0
     loss_per_batch = []
@@ -75,39 +88,51 @@ for epoch in range(1):
     num_left_count = 0  # Reset for each epoch
     data_len = 0  # Track the number of valid batches
 
-    for all_patches, x_hyp, key_pixels, all_labels in train_loader:
+    for all_patches, global_patches, expert_patches, all_labels,mismatch in train_loader:
+
         for batch in range(len(all_patches)):
             batch_patches = all_patches[batch].to(device)
-            batch_pixels = key_pixels[batch].to(device)
+            batch_global_patches = global_patches[batch].to(device)
+            batch_expert_patches = expert_patches[batch].to(device)
             batch_labels = all_labels[batch].to(device)
-            batch_mask_img = x_hyp[batch].to(device)
+            mismatch_count = mismatch[batch]
+
+            
             batch_loss = 0
             count = 0  # Count of skipped pixels
 
-            for i, pixel in enumerate(batch_pixels):
-                if (batch_labels[i] != 255).sum() == 0:
-                    num_left_count += 1
-                    count += 1
-                    continue
-                
+            for patch in range(len(batch_patches)):
+
                 optimizer.zero_grad()
-                output = model(batch_patches[i], batch_mask_img, pixel)
-                loss = criterion(output, batch_labels[i])
+                output = model(batch_patches[patch],batch_expert_patches[patch],batch_global_patches[patch])
+                loss = criterion(output, batch_labels[patch])
+
                 batch_loss += loss
 
                 # Get predictions
                 preds = output.argmax(dim=-1)
-                all_preds.extend(preds.cpu().numpy().flatten())
-                total_preds.extend(preds.cpu().numpy().flatten())
-                total_true_labels.extend(batch_labels[i].cpu().numpy().flatten())
-                all_true_labels.extend(batch_labels[i].cpu().numpy().flatten())
+                preds_np = preds.cpu().numpy().flatten()
+                true_np = batch_labels[patch].cpu().numpy().flatten()
+
+                # Only keep entries where the ground truth is not 255
+                valid_mask = true_np != 255
+
+                # Filter predictions and ground truths
+                filtered_preds = preds_np[valid_mask]
+                filtered_true = true_np[valid_mask]
+
+                # Append the filtered results
+                all_preds.extend(filtered_preds)
+                total_preds.extend(filtered_preds)
+                all_true_labels.extend(filtered_true)
+                total_true_labels.extend(filtered_true)
 
                 loss.backward()
                 optimizer.step()
 
             # Normalize batch_loss by valid pixels
-            if len(batch_pixels) - count > 0:
-                batch_loss /= (len(batch_pixels) - count)
+            if len(batch_expert_patches) - count > 0:
+                batch_loss /= (len(batch_expert_patches) - count)
                 loss_per_batch.append(batch_loss.item())  # Storing batch loss only if valid
                 loss_epoch += batch_loss.item()
                 data_len += 1  # Increment count of valid batches
@@ -124,7 +149,7 @@ for epoch in range(1):
     iou = jaccard_index(torch.tensor(all_preds),torch.tensor(all_true_labels), task="multiclass", num_classes=3)
 
     # Logging
-    log_file = "mar28_exp_battery/training_log.txt"
+    log_file = "exp_apr10/training_log.txt"
     with open(log_file, "a") as f:
         log_message = (f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, "
                        f"Accuracy: {accuracy:.4f}, F1 Micro: {f1_micro:.4f}, F1 Macro: {f1_macro:.4f}, "
@@ -145,17 +170,17 @@ for epoch in range(1):
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': epoch_loss  # Store averaged loss
         }
-        torch.save(checkpoint, f'mar28_exp_battery/checkpoint_epoch_{epoch+1}.pth')
+        torch.save(checkpoint, f'exp_apr10/checkpoint_epoch_{epoch+1}.pth')
         print(f"Checkpoint saved at epoch {epoch+1}")
 
 
 # Save losses
 import pickle
-with open("mar28_exp_battery/loss_per_epoch_100.pkl", "wb") as file:
+with open("exp_apr10/loss_per_epoch_100.pkl", "wb") as file:
     pickle.dump(loss_per_epoch, file)
-with open("mar28_exp_battery/losses_100.pkl", "wb") as file:
+with open("exp_apr10/losses_100.pkl", "wb") as file:
     pickle.dump(losses, file)
-with open("mar28_exp_battery/total_true_labels_100.pkl", "wb") as file:
+with open("exp_apr10/total_true_labels_100.pkl", "wb") as file:
     pickle.dump(total_true_labels, file)
-with open("mar28_exp_battery/total_preds_100.pkl", "wb") as file:
+with open("exp_apr10/total_preds_100.pkl", "wb") as file:
     pickle.dump(total_preds, file)
